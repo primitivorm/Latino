@@ -725,7 +725,7 @@ LATINO_API int latC_llamar_funcion(lat_mv *mv, lat_objeto *func) {
     lj.status = 0;
     lj.previo = mv->error;
     mv->error = &lj;
-    LAT_TRY(mv, &lj, latMV_funcion_correr(mv, func););
+    // LAT_TRY(mv, &lj, latMV_funcion_correr(mv, func););
     mv->error = lj.previo;
     return lj.status;
 }
