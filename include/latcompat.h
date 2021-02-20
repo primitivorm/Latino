@@ -96,6 +96,7 @@ THE SOFTWARE.
 #endif /* __linux__ */
 
 #ifdef __CYGWIN__
+#define SISTEMAOPERATIVO "CYGWIN"
 #include <dlfcn.h>
 #include <regex.h>
 #include <time.h>
