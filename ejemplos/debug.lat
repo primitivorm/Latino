@@ -1,1 +1,6 @@
 i=0
+fun hola(x)
+  i = 3
+fin
+hola(i)
+escribir(i)

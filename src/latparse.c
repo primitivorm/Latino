@@ -2594,6 +2594,7 @@ const char *s) {
   if(!parse_silent){
       fprintf(stderr, LAT_ERROR_FMT, yylloc_param->file_name,
         yylloc_param->first_line, yylloc_param->first_column,  s);
+      exit(EXIT_FAILURE);
   }
   return 0;
 }
