@@ -111,6 +111,25 @@ static int contar_num_parargs(ast *nodo, nodo_tipo nt) {
     return nparams;
 }
 
+static int contar_num_elementos(ast *nodo, nodo_tipo nt) {
+    ast *tmp;
+    int nparams = 0;
+    if (nodo) {
+        if (nodo->tipo == nt) {
+            tmp = nodo;
+            while (tmp->der != NULL && tmp->der->tipo == nt) {
+                tmp = tmp->der;
+                nparams++;
+            }
+        }
+    }
+    // FIXME: Pila vacia
+    if (nodo && nodo->izq != NULL) {
+        nparams++;
+    }
+    return nparams;
+}
+
 static bool encontrar_vararg(ast *nodo) {
     if (nodo && nodo->izq && nodo->izq->tipo == NODO_VAR_ARGS) {
         return true;
@@ -341,12 +360,16 @@ static int ast_analizar(lat_mv *mv, ast *nodo, lat_bytecode *codigo, int i) {
             pn(mv, nIf->cond);
             temp[0] = i;
             dbc(NOP, 0, 0, NULL, 0, 0, mv->nombre_archivo);
+            dbc(PUSH_CTX, 0, 0, NULL, 0, 0, mv->nombre_archivo);
             pn(mv, nIf->entonces);
+            dbc(POP_CTX, 0, 0, NULL, 0, 0, mv->nombre_archivo);
             temp[1] = i;
             dbc(NOP, 0, 0, NULL, 0, 0, mv->nombre_archivo);
             temp[2] = i;
             if (nIf->_sino) {
+                dbc(PUSH_CTX, 0, 0, NULL, 0, 0, mv->nombre_archivo);
                 pn(mv, nIf->_sino);
+                dbc(POP_CTX, 0, 0, NULL, 0, 0, mv->nombre_archivo);
             }
             temp[3] = i;
             codigo[temp[0]] = latMV_bytecode_crear(
@@ -362,6 +385,7 @@ static int ast_analizar(lat_mv *mv, ast *nodo, lat_bytecode *codigo, int i) {
             liberar_elegir(nSi);
         } break;
         case NODO_MIENTRAS: {
+            dbc(PUSH_CTX, 0, 0, NULL, 0, 0, mv->nombre_archivo);
             temp[0] = i;
             pn(mv, nodo->izq);
             temp[1] = i;
@@ -373,8 +397,10 @@ static int ast_analizar(lat_mv *mv, ast *nodo, lat_bytecode *codigo, int i) {
             codigo[temp[1]] = latMV_bytecode_crear(
                 POP_JUMP_IF_FALSE, (i - 1), 0, NULL, nodo->izq->nlin,
                 nodo->izq->ncol, mv->nombre_archivo);
+            dbc(POP_CTX, 0, 0, NULL, 0, 0, mv->nombre_archivo);
         } break;
         case NODO_REPETIR: {
+            dbc(PUSH_CTX, 0, 0, NULL, 0, 0, mv->nombre_archivo);
             temp[0] = i;
             pn(mv, nodo->der);
             pn(mv, nodo->izq);
@@ -383,6 +409,7 @@ static int ast_analizar(lat_mv *mv, ast *nodo, lat_bytecode *codigo, int i) {
             codigo[temp[1]] = latMV_bytecode_crear(
                 POP_JUMP_IF_FALSE, (temp[0] - 1), 0, NULL, nodo->izq->izq->nlin,
                 nodo->izq->izq->ncol, mv->nombre_archivo);
+            dbc(POP_CTX, 0, 0, NULL, 0, 0, mv->nombre_archivo);
         } break;
         case NODO_FUNCION_LLAMADA: {
             // argumentos
@@ -454,6 +481,7 @@ static int ast_analizar(lat_mv *mv, ast *nodo, lat_bytecode *codigo, int i) {
                 es_vararg = encontrar_vararg(fun->params);
             }
             // procesar instrucciones
+            fdbc(PUSH_CTX, 0, 0, NULL, 0, 0, mv->nombre_archivo);
             fpn(mv, fun->stmts);
             fdbc(RETURN_VALUE, 0, 0, latO_nulo, fun->nombre->nlin,
                  fun->nombre->ncol, mv->nombre_archivo);
@@ -520,7 +548,7 @@ static int ast_analizar(lat_mv *mv, ast *nodo, lat_bytecode *codigo, int i) {
             int nparams = 0;
             if (nodo->izq) {
                 nparams =
-                    contar_num_parargs(nodo->izq, NODO_DICC_AGREGAR_ELEMENTO);
+                    contar_num_elementos(nodo->izq, NODO_DICC_AGREGAR_ELEMENTO);
             }
             dbc(BUILD_MAP, nparams, 0, NULL, mv->nlin, mv->ncol,
                 mv->nombre_archivo);
@@ -529,14 +557,19 @@ static int ast_analizar(lat_mv *mv, ast *nodo, lat_bytecode *codigo, int i) {
             }
         } break;
         case NODO_DICC_AGREGAR_ELEMENTO: {
+            int num_lin = 0;
+            int num_col = 0;
             if (nodo->der) {
                 pn(mv, nodo->der);
+                num_lin = nodo->der->nlin;
+                num_col = nodo->der->ncol;
             }
             if (nodo->izq) {
                 pn(mv, nodo->izq);
+                num_lin = nodo->izq->nlin;
+                num_col = nodo->izq->ncol;
             }
-            dbc(STORE_MAP, 0, 0, NULL, nodo->izq->nlin, nodo->izq->ncol,
-                mv->nombre_archivo);
+            dbc(STORE_MAP, 0, 0, NULL, num_lin, num_col, mv->nombre_archivo);
         } break;
         case NODO_DICC_ELEMENTO: {
             if (nodo->der) {
@@ -716,7 +749,7 @@ LATINO_API void latC_error(lat_mv *mv, const char *fmt, ...) {
     char *info = malloc(MAX_INPUT_SIZE);
     if (strstr(buffer, "%") != NULL) {
         snprintf(info, MAX_INPUT_SIZE, LAT_ERROR_FMT, mv->nombre_archivo,
-                 mv->nlin, mv->ncol);
+                 mv->nlin, mv->ncol, "");
         latC_apilar(mv, latC_crear_cadena(mv, info));
         latC_apilar(mv, latC_crear_cadena(mv, buffer));
         str_concatenar(mv);
@@ -752,9 +785,9 @@ LATINO_API lat_objeto *latC_analizar(lat_mv *mv, ast *nodo) {
 #if DEPURAR_AST
     mostrar_bytecode(mv, codigo);
 #endif
-    lat_bytecode *nuevo_codigo =
-        latM_asignar(mv, sizeof(lat_bytecode) * (i + 1));
-    memcpy(nuevo_codigo, codigo, sizeof(lat_bytecode) * (i + 1));
+    int j = i + 1;
+    lat_bytecode *nuevo_codigo = latM_asignar(mv, sizeof(lat_bytecode) * j);
+    memcpy(nuevo_codigo, codigo, sizeof(lat_bytecode) * j);
 #if DEPURAR_MEM
     printf("latC_analizar.nuevo_codigo: %p\n", nuevo_codigo);
 #endif

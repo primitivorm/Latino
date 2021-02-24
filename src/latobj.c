@@ -801,6 +801,7 @@ LATINO_API char latC_achar(lat_mv *mv, lat_objeto *o) {
 }
 
 LATINO_API char *latC_astring(lat_mv *mv, lat_objeto *o) {
+
     if (o == NULL || o->tipo == T_NULL) {
         return strdup("nulo");
     } else if (o->tipo == T_BOOL) {

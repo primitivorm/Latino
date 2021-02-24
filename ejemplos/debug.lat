@@ -1,6 +1,18 @@
-i=0
-fun hola(x)
-  i = 3
-fin
-hola(i)
-escribir(i)
+// a=0
+// fun hola(x)
+//   i = 3
+// fin
+// hola(a)
+// escribir(i)
+
+// a=15
+// mientras a > 0
+// 	poner(a)
+// 	a--
+// fin
+
+// a=1
+// si a == 1
+// 	a=2
+// fin
+// poner(a)

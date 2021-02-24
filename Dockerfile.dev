@@ -16,12 +16,13 @@ RUN adduser docker sudo
 RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 USER docker
 
-# Establecer directorio de trabajo
+# Clonar rama de dev
 WORKDIR /home/docker/
-RUN git clone https://github.com/primitivorm/latino
+RUN git clone https://github.com/primitivorm/latino --branch dev
 WORKDIR /home/docker/latino
 RUN git checkout dev
 
+# Crear archivos de flex y bison para el analizar lexico / sintactico
 WORKDIR /home/docker/latino/tools/parser
 RUN flex latlex.l
 RUN bison -y latparse.y
@@ -29,6 +30,7 @@ RUN mv *.c ../../src
 RUN mv *.h ../../include
 
 WORKDIR /home/docker/latino
+
 # Compilar latino en modo Debug
 RUN cmake -DCMAKE_BUILD_TYPE=Debug -G "Unix Makefiles" .
 RUN make

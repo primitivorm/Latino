@@ -563,14 +563,8 @@ static lat_objeto *latMV_get_symbol(lat_mv *mv, lat_objeto *name) {
     return val;
 }
 
-static void latMV_set_symbol(lat_mv *mv, lat_bytecode cur) {
-    lat_objeto *val = NULL;
-    if (mv->ptrpila == 0) {
-        val = latO_nulo;
-    } else {
-        val = latC_desapilar(mv);
-    }
-    lat_objeto *name = (lat_objeto *)cur.meta;
+static void latMV_set_symbol(lat_mv *mv, lat_objeto *name, lat_objeto *val) {
+
     lat_objeto *ctx = obtener_contexto(mv);
     // objeto anterior
     lat_objeto *tmp =
@@ -588,18 +582,20 @@ static void latMV_call_function(lat_mv *mv, lat_objeto *func, lat_bytecode cur,
                                 lat_bytecode next) {
     int num_args = cur.a;
     lat_objeto *fun = latM_asignar(mv, sizeof(lat_objeto));
+    setobj2obj(fun, latC_desapilar(mv));
 #if DEPURAR_MEM
     printf("latMV_call_function.fun: %p\n", fun);
 #endif
-    setobj2obj(fun, latC_desapilar(mv));
     if (!(fun->tipo == T_CFUN || fun->tipo == T_FUN)) {
         latC_error(mv, "El objeto no es una funcion");
     }
     int nparams = fun->nparams;
-    while (mv->ptrpila < nparams) {
-        latC_apilar(mv, latO_nulo);
-        num_args++;
-    }
+    // TODO: Revisar si es necesario este codigo
+    // while (mv->ptrpila < nparams) {
+    //     latC_apilar(mv, latO_nulo);
+    //     num_args++;
+    // }
+    // END TODO:
     if (nparams == FUNCION_VAR_ARGS) {
         // T_CFUN y varargs
         fun->es_vararg = true;
@@ -615,10 +611,12 @@ static void latMV_call_function(lat_mv *mv, lat_objeto *func, lat_bytecode cur,
         latC_apilar_double(mv, (double)num_args);
     } else if (num_args != nparams && !fun->es_vararg) {
         if (num_args < nparams) {
+            // TODO: Revisar si es necesario este codigo
             while (num_args < nparams) {
                 latC_apilar(mv, latO_nulo);
                 num_args++;
             }
+            // END TODO:
         } else {
             // T_FUN y no varargs
             latC_error(mv,
@@ -628,9 +626,11 @@ static void latMV_call_function(lat_mv *mv, lat_objeto *func, lat_bytecode cur,
         }
     } else {
         if (mv->prev_args > 1) {
+            // TODO: Revisar si es necesario este codigo
             while (mv->ptrpila > (mv->ptrprevio + nparams)) {
                 latC_desapilar(mv);
             }
+            // END TODO:
         }
     }
     mv->numejec++;
@@ -1020,7 +1020,14 @@ int latMV_funcion_correr(lat_mv *mv, lat_objeto *func) {
                     latC_apilar(mv, o);
                 } break;
                 case STORE_NAME: {
-                    latMV_set_symbol(mv, cur);
+                    lat_objeto *val = NULL;
+                    if (mv->ptrpila == 0) {
+                        val = latO_nulo;
+                    } else {
+                        val = latC_desapilar(mv);
+                    }
+                    lat_objeto *name = (lat_objeto *)cur.meta;
+                    latMV_set_symbol(mv, name, val);
 #if DEPURAR_MV
                     latO_imprimir(mv, name, false);
                     printf("\t");
@@ -1073,6 +1080,8 @@ int latMV_funcion_correr(lat_mv *mv, lat_objeto *func) {
 #if DEPURAR_MV
                     printf("%i\n", cur.a);
 #endif
+                    // FIXME: Truena en incluir
+                    // desapilar_contexto(mv);
                     return cur.a;
                 } break;
                 case MAKE_FUNCTION: {
@@ -1128,12 +1137,14 @@ int latMV_funcion_correr(lat_mv *mv, lat_objeto *func) {
 #if DEPURAR_MV
                     printf("%i\t", cur.a);
 #endif
+                    // TODO: Revisar si es necesario este codigo
                     while (cur.a > mv->ptrpila) {
                         latC_apilar(mv, latO_nulo);
                     }
                     while (mv->ptrpila >= (mv->ptrprevio + cur.a)) {
                         latC_desapilar(mv);
                     }
+                    // END TODO:
                 } break;
                 default:
                     continue;
