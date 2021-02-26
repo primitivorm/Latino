@@ -473,7 +473,7 @@ dict_new
 dict_items
     : /* empty */ { $$ = NULL; }
     | dict_item { $$ = latA_nodo(NODO_DICC_AGREGAR_ELEMENTO, $1, NULL, @1.first_line, @1.first_column); }
-    | dict_items ',' dict_item { $$ = latA_nodo(NODO_DICC_AGREGAR_ELEMENTO, $3, $1, @3.first_line, @3.first_column); }
+    | dict_item ',' dict_items { $$ = latA_nodo(NODO_DICC_AGREGAR_ELEMENTO, $1, $3, @1.first_line, @1.first_column); }
     ;
 
 dict_item

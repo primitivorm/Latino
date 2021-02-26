@@ -559,25 +559,25 @@ static int ast_analizar(lat_mv *mv, ast *nodo, lat_bytecode *codigo, int i) {
         case NODO_DICC_AGREGAR_ELEMENTO: {
             int num_lin = 0;
             int num_col = 0;
-            if (nodo->der) {
-                pn(mv, nodo->der);
-                num_lin = nodo->der->nlin;
-                num_col = nodo->der->ncol;
-            }
             if (nodo->izq) {
                 pn(mv, nodo->izq);
                 num_lin = nodo->izq->nlin;
                 num_col = nodo->izq->ncol;
             }
+            if (nodo->der) {
+                pn(mv, nodo->der);
+                num_lin = nodo->der->nlin;
+                num_col = nodo->der->ncol;
+            }
             dbc(STORE_MAP, 0, 0, NULL, num_lin, num_col, mv->nombre_archivo);
         } break;
         case NODO_DICC_ELEMENTO: {
-            if (nodo->der) {
-                pn(mv, nodo->der);
-            }
             if (nodo->izq) {
                 pn(mv, nodo->izq);
             }
+            if (nodo->der) {
+                pn(mv, nodo->der);
+            }            
         } break;
         case NODO_BLOQUE: {
             if (nodo->izq) {
@@ -588,6 +588,8 @@ static int ast_analizar(lat_mv *mv, ast *nodo, lat_bytecode *codigo, int i) {
             }
         } break;
         case NODO_NULO:
+            // TODO: Checar si aqui se puede mandar el error de , de + en
+            // diccionario
             break;
         case NODO_VAR_ARGS: {
             ;
@@ -782,7 +784,7 @@ LATINO_API lat_objeto *latC_analizar(lat_mv *mv, ast *nodo) {
 #endif
     int i = ast_analizar(mv, nodo, codigo, 0);
     dbc(HALT, 0, 0, NULL, 0, 0, mv->nombre_archivo);
-#if DEPURAR_AST
+#if DEPURAR_BYTECODE
     mostrar_bytecode(mv, codigo);
 #endif
     int j = i + 1;
