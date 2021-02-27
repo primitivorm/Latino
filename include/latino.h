@@ -201,6 +201,7 @@ LATINO_API lat_objeto *latC_crear_caracter(lat_mv *mv, char val);
 LATINO_API lat_objeto *latC_crear_cadena(lat_mv *mv, const char *val);
 LATINO_API lat_objeto *latC_crear_lista(lat_mv *mv, lista *l);
 LATINO_API lat_objeto *latC_crear_dic(lat_mv *mv, hash_map *dic);
+LATINO_API lat_objeto *latC_crear_ctx(lat_mv *mv, hash_map *dic);
 LATINO_API lat_objeto *latC_crear_cdato(lat_mv *mv, void *ptr);
 LATINO_API lat_objeto *latC_crear_funcion(lat_mv *mv, lat_bytecode *inslist,
                                           int ninst);

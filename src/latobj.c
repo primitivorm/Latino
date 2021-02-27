@@ -581,6 +581,16 @@ LATINO_API lat_objeto *latC_crear_dic(lat_mv *mv, hash_map *dic) {
     return ret;
 }
 
+LATINO_API lat_objeto *latC_crear_ctx(lat_mv *mv, hash_map *dic) {
+    lat_objeto *ret = latO_crear(mv);
+#if DEPURAR_MEM
+    printf("latC_crear_dic: %p\n", ret);
+#endif
+    ret->tam += sizeof(hash_map);
+    setCtx(ret, dic);
+    return ret;
+}
+
 LATINO_API lat_objeto *latC_crear_cdato(lat_mv *mv, void *ptr) {
     lat_objeto *ret = latO_crear(mv);
 #if DEPURAR_MEM
@@ -702,8 +712,9 @@ LATINO_API double latC_adouble(lat_mv *mv, lat_objeto *o) {
             if (!strcmp(ptr, "")) {
                 return ret;
             } else {
-                ret = (int)(latC_checar_cadena(mv, o)[0]);
-                return ret;
+                // ret = (int)(latC_checar_cadena(mv, o)[0]);
+                // return ret;
+                return 0;
             }
         } break;
         case T_LIST:

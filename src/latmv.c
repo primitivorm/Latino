@@ -279,13 +279,15 @@ static lat_objeto *obtener_contexto_global(lat_mv *mv) {
     return mv->contexto[0];
 }
 
-static void apilar_contexto(lat_mv *mv, lat_objeto *ctx) {
+// FIXME: proman => Agregar contextos por modulo
+static void apilar_contexto(lat_mv *mv) {
     if (mv->ptrctx >= MAX_STACK_CONTEXT_SIZE) {
         printf(LAT_ERROR_FMT, mv->nombre_archivo, mv->nlin, mv->ncol,
                "Desborde de la pila de contextos");
         exit(EXIT_FAILURE);
     }
-    mv->contexto[mv->ptrctx + 1] = latO_clonar(mv, mv->contexto[mv->ptrctx]);
+    // mv->contexto[mv->ptrctx + 1] = latO_clonar(mv, mv->contexto[mv->ptrctx]);
+    mv->contexto[mv->ptrctx + 1] = latC_crear_ctx(mv, latH_crear(mv));
     mv->ptrctx++;
     mv->contexto_actual = mv->contexto[mv->ptrctx];
 }
@@ -546,17 +548,20 @@ lat_bytecode latMV_bytecode_crear(int i, int a, int b, void *meta,
 }
 
 static lat_objeto *latMV_get_symbol(lat_mv *mv, lat_objeto *name) {
-    lat_objeto *ctx = obtener_contexto(mv);
-    lat_objeto *val = (lat_objeto *)latO_obtener_contexto(
-        mv, ctx, latC_checar_cadena(mv, name));
-    if (val == NULL) {
-        ctx = obtener_contexto_global(mv);
-        val = (lat_objeto *)latO_obtener_contexto(mv, ctx,
-                                                  latC_checar_cadena(mv, name));
-        if (val == NULL) {
-            latC_error(mv, "Variable '%s' indefinida",
-                       latC_checar_cadena(mv, name));
+    int i = mv->ptrctx;
+    lat_objeto *ctx = NULL;
+    lat_objeto *val = NULL;
+    while (i > 0) {
+        ctx = mv->contexto[i];
+        val = latO_obtener_contexto(mv, ctx, latC_checar_cadena(mv, name));
+        if (val != NULL) {
+            return val;
         }
+        i--;
+    }
+    ctx = obtener_contexto_global(mv);
+    val = latO_obtener_contexto(mv, ctx, latC_checar_cadena(mv, name));
+    if (val == NULL) {
         latC_error(mv, "Variable '%s' indefinida",
                    latC_checar_cadena(mv, name));
     }
@@ -564,13 +569,27 @@ static lat_objeto *latMV_get_symbol(lat_mv *mv, lat_objeto *name) {
 }
 
 static void latMV_set_symbol(lat_mv *mv, lat_objeto *name, lat_objeto *val) {
-
-    lat_objeto *ctx = obtener_contexto(mv);
-    // objeto anterior
-    lat_objeto *tmp =
-        latO_obtener_contexto(mv, ctx, latC_checar_cadena(mv, name));
+    int i = mv->ptrctx;
+    lat_objeto *ctx = NULL;
+    lat_objeto *old_val = NULL;
+    while (i > 0) {
+        ctx = mv->contexto[i];
+        old_val = latO_obtener_contexto(mv, ctx, latC_checar_cadena(mv, name));
+        if (old_val != NULL) {
+            if (old_val->esconst) {
+                latC_error(mv, "Intento de reasignar valor a constante '%s'",
+                           latC_checar_cadena(mv, name));
+            }
+            latO_asignar_ctx(mv, ctx, latC_checar_cadena(mv, name), val);
+            return;
+        }
+        i--;
+    }
+    // si no existe se crea el simbolo
+    ctx = obtener_contexto(mv);
+    old_val = latO_obtener_contexto(mv, ctx, latC_checar_cadena(mv, name));
     if (name->esconst) {
-        if (tmp != NULL) {
+        if (old_val != NULL) {
             latC_error(mv, "Intento de reasignar valor a constante '%s'",
                        latC_checar_cadena(mv, name));
         }
@@ -591,10 +610,10 @@ static void latMV_call_function(lat_mv *mv, lat_objeto *func, lat_bytecode cur,
     }
     int nparams = fun->nparams;
     // TODO: Revisar si es necesario este codigo
-    // while (mv->ptrpila < nparams) {
-    //     latC_apilar(mv, latO_nulo);
-    //     num_args++;
-    // }
+    while (mv->ptrpila < nparams) {
+        latC_apilar(mv, latO_nulo);
+        num_args++;
+    }
     // END TODO:
     if (nparams == FUNCION_VAR_ARGS) {
         // T_CFUN y varargs
@@ -627,9 +646,9 @@ static void latMV_call_function(lat_mv *mv, lat_objeto *func, lat_bytecode cur,
     } else {
         if (mv->prev_args > 1) {
             // TODO: Revisar si es necesario este codigo
-            while (mv->ptrpila > (mv->ptrprevio + nparams)) {
-                latC_desapilar(mv);
-            }
+            // while (mv->ptrpila > (mv->ptrprevio + nparams)) {
+            //     latC_desapilar(mv);
+            // }
             // END TODO:
         }
     }
@@ -642,7 +661,7 @@ static void latMV_call_function(lat_mv *mv, lat_objeto *func, lat_bytecode cur,
                   (fun->nombre != NULL && func->nombre != NULL &&
                    !strcmp(func->nombre, fun->nombre));
     if (apilar) {
-        apilar_contexto(mv, NULL);
+        // apilar_contexto(mv);
         mv->ptrprevio = (mv->ptrpila);
     } else {
         mv->ptrprevio = 1; // restore stack
@@ -662,7 +681,7 @@ static void latMV_call_function(lat_mv *mv, lat_objeto *func, lat_bytecode cur,
     }
     latM_liberar(mv, fun);
     if (apilar) {
-        desapilar_contexto(mv);
+        // desapilar_contexto(mv);
 #if HABILITAR_GC
         gc_checar(mv);
 #endif
@@ -786,7 +805,7 @@ static void latMV_store_subscr(lat_mv *mv) {
     }
 }
 
-static void binary_subscr(lat_mv *mv) {
+static void binary_subscr(lat_mv *mv, lat_bytecode next) {
     lat_objeto *obj = latC_desapilar(mv);
     lat_objeto *pos = latC_desapilar(mv);
     lat_objeto *o = NULL;
@@ -844,9 +863,70 @@ static void binary_subscr(lat_mv *mv) {
     latC_apilar(mv, o);
 }
 
+// static void binary_subscr(lat_mv *mv, lat_bytecode next) {
+//     lat_objeto *obj = latC_desapilar(mv);
+//     lat_objeto *pos = latC_desapilar(mv);
+//     lat_objeto *o = NULL;
+//     if (obj->tipo == T_DIC) {
+//         o = latH_obtener(latC_checar_dic(mv, obj), latC_checar_cadena(mv,
+//         pos)); if (o == NULL) {
+//             o = latC_crear_cadena(mv, "");
+//         }
+//         latC_apilar(mv, o);
+//         return;
+//     }
+//     int ipos = 0;
+//     if (pos->tipo == T_NUMERIC) {
+//         ipos = latC_checar_numerico(mv, pos);
+//     } else {
+//         o = latC_crear_cadena(mv, "");
+//         latC_apilar(mv, o);
+//         return;
+//     }
+//     if (obj->tipo == T_LIST) {
+//         lista *ll = latC_checar_lista(mv, obj);
+//         int len = latL_longitud(ll);
+//         if (ipos < 0) {
+//             ipos = ipos + len;
+//             getNumerico(pos) = ipos;
+//         }
+//         if (ipos < 0 || ipos >= len) {
+//             o = latC_crear_cadena(mv, "");
+//             latC_apilar(mv, o);
+//             return;
+//         }
+//         o = latL_obtener_elemento(mv, latC_checar_lista(mv, obj),
+//                                   latC_checar_numerico(mv, pos));
+//         latC_apilar(mv, o);
+//         return;
+//     }
+//     if (obj->tipo == T_STR) {
+//         char *sobj = latC_checar_cadena(mv, obj);
+//         if (ipos < 0 || ipos >= strlen(sobj)) {
+//             o = latO_nulo;
+//             latC_apilar(mv, o);
+//             return;
+//         }
+//         char c[2] = {sobj[ipos], '\0'};
+//         o = latC_crear_cadena(mv, c);
+//         return;
+//     }
+//     // if (obj->tipo == T_NUMERIC) {
+//     //     char *sobj = latC_astring(mv, obj);
+//     //     if (ipos < 0 || ipos >= strlen(sobj)) {
+//     //         o = latO_nulo;
+//     //         latC_apilar(mv, o);
+//     //         return;
+//     //     }
+//     //     char c[2] = {sobj[ipos], '\0'};
+//     //     o = latC_crear_cadena(mv, c);
+//     // }
+//     latC_error(mv, "binary_subscr. Tipo de objeto invalido");
+// }
+
 static void latMV_store_map(lat_mv *mv) {
-    lat_objeto *key = latC_desapilar(mv);
     lat_objeto *val = latC_desapilar(mv);
+    lat_objeto *key = latC_desapilar(mv);
     lat_objeto *dic = latC_tope(mv);
     while (dic && dic->tipo != T_DIC) {
         latC_desapilar(mv);
@@ -1080,7 +1160,6 @@ int latMV_funcion_correr(lat_mv *mv, lat_objeto *func) {
 #if DEPURAR_MV
                     printf("%i\n", cur.a);
 #endif
-                    // FIXME: Truena en incluir
                     // desapilar_contexto(mv);
                     return cur.a;
                 } break;
@@ -1089,7 +1168,7 @@ int latMV_funcion_correr(lat_mv *mv, lat_objeto *func) {
                     latC_apilar(mv, fun);
                 } break;
                 case PUSH_CTX:
-                    apilar_contexto(mv, NULL);
+                    apilar_contexto(mv);
                     break;
                 case POP_CTX:
                     desapilar_contexto(mv);
@@ -1104,7 +1183,7 @@ int latMV_funcion_correr(lat_mv *mv, lat_objeto *func) {
                     latMV_store_subscr(mv);
                 } break;
                 case BINARY_SUBSCR: {
-                    binary_subscr(mv);
+                    binary_subscr(mv, next);
                 } break;
                 case BUILD_MAP: {
                     lat_objeto *o = latC_crear_dic(mv, latH_crear(mv));
@@ -1141,9 +1220,9 @@ int latMV_funcion_correr(lat_mv *mv, lat_objeto *func) {
                     while (cur.a > mv->ptrpila) {
                         latC_apilar(mv, latO_nulo);
                     }
-                    while (mv->ptrpila >= (mv->ptrprevio + cur.a)) {
-                        latC_desapilar(mv);
-                    }
+                    // while (mv->ptrpila >= (mv->ptrprevio + cur.a)) {
+                    //     latC_desapilar(mv);
+                    // }
                     // END TODO:
                 } break;
                 default:

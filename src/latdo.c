@@ -123,7 +123,6 @@ static int contar_num_elementos(ast *nodo, nodo_tipo nt) {
             }
         }
     }
-    // FIXME: Pila vacia
     if (nodo && nodo->izq != NULL) {
         nparams++;
     }
@@ -360,16 +359,12 @@ static int ast_analizar(lat_mv *mv, ast *nodo, lat_bytecode *codigo, int i) {
             pn(mv, nIf->cond);
             temp[0] = i;
             dbc(NOP, 0, 0, NULL, 0, 0, mv->nombre_archivo);
-            dbc(PUSH_CTX, 0, 0, NULL, 0, 0, mv->nombre_archivo);
             pn(mv, nIf->entonces);
-            dbc(POP_CTX, 0, 0, NULL, 0, 0, mv->nombre_archivo);
             temp[1] = i;
             dbc(NOP, 0, 0, NULL, 0, 0, mv->nombre_archivo);
             temp[2] = i;
             if (nIf->_sino) {
-                dbc(PUSH_CTX, 0, 0, NULL, 0, 0, mv->nombre_archivo);
                 pn(mv, nIf->_sino);
-                dbc(POP_CTX, 0, 0, NULL, 0, 0, mv->nombre_archivo);
             }
             temp[3] = i;
             codigo[temp[0]] = latMV_bytecode_crear(
@@ -385,7 +380,6 @@ static int ast_analizar(lat_mv *mv, ast *nodo, lat_bytecode *codigo, int i) {
             liberar_elegir(nSi);
         } break;
         case NODO_MIENTRAS: {
-            dbc(PUSH_CTX, 0, 0, NULL, 0, 0, mv->nombre_archivo);
             temp[0] = i;
             pn(mv, nodo->izq);
             temp[1] = i;
@@ -397,10 +391,8 @@ static int ast_analizar(lat_mv *mv, ast *nodo, lat_bytecode *codigo, int i) {
             codigo[temp[1]] = latMV_bytecode_crear(
                 POP_JUMP_IF_FALSE, (i - 1), 0, NULL, nodo->izq->nlin,
                 nodo->izq->ncol, mv->nombre_archivo);
-            dbc(POP_CTX, 0, 0, NULL, 0, 0, mv->nombre_archivo);
         } break;
         case NODO_REPETIR: {
-            dbc(PUSH_CTX, 0, 0, NULL, 0, 0, mv->nombre_archivo);
             temp[0] = i;
             pn(mv, nodo->der);
             pn(mv, nodo->izq);
@@ -409,7 +401,6 @@ static int ast_analizar(lat_mv *mv, ast *nodo, lat_bytecode *codigo, int i) {
             codigo[temp[1]] = latMV_bytecode_crear(
                 POP_JUMP_IF_FALSE, (temp[0] - 1), 0, NULL, nodo->izq->izq->nlin,
                 nodo->izq->izq->ncol, mv->nombre_archivo);
-            dbc(POP_CTX, 0, 0, NULL, 0, 0, mv->nombre_archivo);
         } break;
         case NODO_FUNCION_LLAMADA: {
             // argumentos
@@ -424,9 +415,9 @@ static int ast_analizar(lat_mv *mv, ast *nodo, lat_bytecode *codigo, int i) {
                 mv->nombre_archivo);
         } break;
         case NODO_RETORNO: {
-            pn(mv, nodo->izq);
             int num_args =
                 contar_num_parargs(nodo->izq, NODO_FUNCION_ARGUMENTOS);
+            pn(mv, nodo->izq);
             dbc(RETURN_VALUE, num_args == 0 ? 1 : num_args, 0, NULL,
                 nodo->izq->nlin, nodo->izq->ncol, mv->nombre_archivo);
         } break;
@@ -476,12 +467,12 @@ static int ast_analizar(lat_mv *mv, ast *nodo, lat_bytecode *codigo, int i) {
             fi = 0;
             // procesar lista de params
             bool es_vararg = false;
+            // fdbc(PUSH_CTX, 0, 0, NULL, 0, 0, mv->nombre_archivo);
             if (fun->params) {
                 fpn(mv, fun->params);
                 es_vararg = encontrar_vararg(fun->params);
             }
             // procesar instrucciones
-            fdbc(PUSH_CTX, 0, 0, NULL, 0, 0, mv->nombre_archivo);
             fpn(mv, fun->stmts);
             fdbc(RETURN_VALUE, 0, 0, latO_nulo, fun->nombre->nlin,
                  fun->nombre->ncol, mv->nombre_archivo);
@@ -563,13 +554,12 @@ static int ast_analizar(lat_mv *mv, ast *nodo, lat_bytecode *codigo, int i) {
                 pn(mv, nodo->izq);
                 num_lin = nodo->izq->nlin;
                 num_col = nodo->izq->ncol;
+                dbc(STORE_MAP, 0, 0, NULL, num_lin, num_col,
+                    mv->nombre_archivo);
             }
             if (nodo->der) {
                 pn(mv, nodo->der);
-                num_lin = nodo->der->nlin;
-                num_col = nodo->der->ncol;
             }
-            dbc(STORE_MAP, 0, 0, NULL, num_lin, num_col, mv->nombre_archivo);
         } break;
         case NODO_DICC_ELEMENTO: {
             if (nodo->izq) {
@@ -577,7 +567,7 @@ static int ast_analizar(lat_mv *mv, ast *nodo, lat_bytecode *codigo, int i) {
             }
             if (nodo->der) {
                 pn(mv, nodo->der);
-            }            
+            }
         } break;
         case NODO_BLOQUE: {
             if (nodo->izq) {
@@ -588,8 +578,6 @@ static int ast_analizar(lat_mv *mv, ast *nodo, lat_bytecode *codigo, int i) {
             }
         } break;
         case NODO_NULO:
-            // TODO: Checar si aqui se puede mandar el error de , de + en
-            // diccionario
             break;
         case NODO_VAR_ARGS: {
             ;
@@ -638,7 +626,6 @@ void mostrar_bytecode(lat_mv *mv, lat_bytecode *codigo) {
             case OP_NOT:
             case CONCAT:
             case PUSH_CTX:
-            case POP_CTX:
             case RETURN_VALUE:
             case STORE_SUBSCR:
             case BINARY_SUBSCR:

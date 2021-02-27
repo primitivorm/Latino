@@ -1,18 +1,18 @@
-// a=0
-// fun hola(x)
-//   i = 3
-// fin
-// hola(a)
-// escribir(i)
+color = "im.azul"
+separador = '.'
+colores_disponibles = [
+    "negro",
+    "rojo",
+    "verde",
+    "amarillo",
+    "azul",
+    "purpura",
+    "cyan",
+    "blanco",
+    "rosa",
+    "naranja"
+]
 
-// a=15
-// mientras a > 0
-// 	poner(a)
-// 	a--
-// fin
-
-// a=1
-// si a == 1
-// 	a=2
-// fin
-// poner(a)
+colmat = cadena.match(color, "([[:alnum:]]+)"..separador.."([[:alnum:]]+)")
+poner(colmat)
+poner(colmat[0][2])

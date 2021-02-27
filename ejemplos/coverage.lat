@@ -42,8 +42,8 @@ fin
 
 global i = 0
 repetir
-    poner(i)
-    i++
+	poner(i)
+	i++
 hasta (i >= 10)
 
 a=10
@@ -109,10 +109,10 @@ poner(operacion("!", 1))
 poner(operacion("..", "hola", "mundo"))
 
 funcion fibo_rec(n)
-    si ( n < 2 )
-        retorno n
-    fin
-    retorno fibo_rec(n-1) + fibo_rec(n-2)
+	si ( n < 2 )
+		retorno n
+	fin
+	retorno fibo_rec(n-1) + fibo_rec(n-2)
 fin
 
 poner(fibo_rec(10))
@@ -163,46 +163,46 @@ poner(str[0])
 imprimirf("%s %s\n", "hola", "mundo")
 
 //una funcion varargs se crea con ... en su ultimo parametro
-  funcion concat(arg1, arg2, ...)
-    //obtenemos los parametros varargs
-    args = [...]
-    //concatenamos los primeros 2 argumentos
-    r= arg1 .. arg2
-    desde (i=0; i < args; i++)
-      r = r .. args[i]
-    fin
-    retornar r
-  fin
-  //enviamos N parametros
-  msg = concat("hola ", "mundo ", "este ", "es ", "un ", "mensaje ", "largo...")
-  escribir(msg)   //imprime: "hola mundo este es un mensaje largo..."
+funcion concat(arg1, arg2, ...)
+	//obtenemos los parametros varargs
+	args = [...]
+	//concatenamos los primeros 2 argumentos
+	r= arg1 .. arg2
+	desde (i=0; i < args; i++)
+		r = r .. args[i]
+	fin
+	retornar r
+fin
+//enviamos N parametros
+msg = concat("hola ", "mundo ", "este ", "es ", "un ", "mensaje ", "largo...")
+escribir(msg)   //imprime: "hola mundo este es un mensaje largo..."
 
   //otro ejemplo
-  funcion sumar(...)
-    args = [...]
-    r=0
-    desde (i=0; i < args; i++)
-      r = r + args[i]
-    fin
-    retornar r
-  fin
-  x = sumar(1,2,3,4,5)
-  imprimir(x)     //imprime: "15"
+funcion sumar(...)
+	args = [...]
+	r=0
+	desde (i=0; i < args; i++)
+		r = r + args[i]
+	fin
+	retornar r
+fin
+x = sumar(1,2,3,4,5)
+imprimir(x)     //imprime: "15"
 
   //una funcion multi-retorno es aquella que regresa N parametros
 funcion multi_ret(msg)
-  #proceso el mensaje
-  //mas codigo
-  //regreso un valor exitoso y un mensaje, puede retornar mas mensajes
-  retornar verdadero, "el mensaje se envio correctamente"
+	#proceso el mensaje
+	//mas codigo
+	//regreso un valor exitoso y un mensaje, puede retornar mas mensajes
+	retornar verdadero, "el mensaje se envio correctamente"
 fin
 
 //asignacion multiple de variables
 correcto, mensaje = multi_ret("hola amigos")
 
 si correcto
-  //imprime: "el mensaje se envio correctamente"
-  escribir(mensaje)
+	//imprime: "el mensaje se envio correctamente"
+	escribir(mensaje)
 fin
 
 //necesario para agregar la libreria dinamica

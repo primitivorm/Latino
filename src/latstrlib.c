@@ -805,18 +805,15 @@ void str_match(lat_mv *mv) {
     cursor = latC_checar_cadena(mv, source);
     lat_objeto *l_matches = latC_crear_lista(mv, latL_crear(mv));
     for (int m = 0; m < maxMatches; m++) {
-        if (regexec(&regexCompiled, cursor, maxGroups, groupArray, 0)) {
+        if (regexec(&regexCompiled, cursor, maxGroups, groupArray, 0))
             break; // No more matches
-        }
         unsigned int offset = 0;
         lat_objeto *l_groups = latC_crear_lista(mv, latL_crear(mv));
         for (int g = 0; g < maxGroups; g++) {
-            if (groupArray[g].rm_so == (size_t)-1) {
+            if (groupArray[g].rm_so == (size_t)-1)
                 break; // No more groups
-            }
-            if (g == 0) {
+            if (g == 0)
                 offset = groupArray[g].rm_eo;
-            }
             char *cursorCopy = malloc(strlen(cursor) + 1);
             strcpy(cursorCopy, cursor);
             cursorCopy[groupArray[g].rm_eo] = 0;
@@ -978,8 +975,8 @@ static const lat_CReg libstr[] = {
     {"eliminar", str_eliminar, 2},
     {"separar", str_separar, 2},
     {"inicia_con", str_inicia_con, 2},
-    {"regexl", str_regex, 2},
-    {"regex", str_match, 2},
+    {"regex", str_regex, 2},
+    {"match", str_match, 2},
     {"insertar", str_insertar, 3},
     {"rellenar_izquierda", str_rellenar_izquierda, 3},
     {"rellenar_derecha", str_rellenar_derecha, 3},
