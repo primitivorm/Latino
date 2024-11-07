@@ -23,6 +23,7 @@ THE SOFTWARE.
  */
 
 #include "latino.h"
+#include "latmem.h"
 
 #define LIB_CADENA_NAME "cadena"
 
@@ -698,7 +699,8 @@ void str_ejecutar(lat_mv *mv) {
     lat_objeto *func = latC_analizar(mv, nodo);
     if (status == 0 && nodo != NULL) {
         status = latC_llamar_funcion(mv, func);
-        latO_destruir(mv, func);
+        // FIXME: Memory leak
+        // latO_destruir(mv, func);
     } else {
         latC_error(mv, "Error al ejecutar cadena");
     }
@@ -855,7 +857,7 @@ void str_formato(lat_mv *mv) {
     }
     char *strfrmt = latC_checar_cadena(mv, ofmt);
     char *strfrmt_end = strfrmt + strlen(strfrmt);
-    char *b = calloc(1, 1024);
+    char *b = latM_asignar(mv, MAX_STR_LENGTH);
     while (strfrmt < strfrmt_end) {
         if (*strfrmt != '%') {
             sprintf(b, "%s%c", b, *strfrmt++);
@@ -863,7 +865,8 @@ void str_formato(lat_mv *mv) {
             sprintf(b, "%s%c", b, *strfrmt++);
         } else {
 #ifdef _WIN32
-            char buff[MAX_BUFFERSIZE];
+            // char buff[MAX_BUFFERSIZE];
+            char *buff = latM_asignar(mv, MAX_STR_LENGTH);
 #else
             char buff[MAX_STR_LENGTH];
 #endif
@@ -901,13 +904,15 @@ void str_formato(lat_mv *mv) {
                 } break;
                 case 's': { // string
                     lat_objeto *str = latL_extraer_inicio(mv, params);
-                    sprintf(buff, "%s", latC_astring(mv, str));
+                    char *c_str = latC_astring(mv, str);
+                    sprintf(buff, "%s", c_str);
                 } break;
                 default: {
                     latC_error(mv, "Opcion de formato invalida");
                 }
             }
             strcat(b, buff);
+            latM_liberar(mv, buff);
         }
     }
     latC_apilar_string(mv, b);

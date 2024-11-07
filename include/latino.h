@@ -192,6 +192,7 @@ LATINO_API void latC_apilar_char(lat_mv *mv, char c);
 LATINO_API lat_objeto *latC_analizar(lat_mv *mv, ast *nodo);
 LATINO_API int latC_llamar_funcion(lat_mv *mv, lat_objeto *func);
 LATINO_API void latC_error(lat_mv *mv, const char *fmt, ...);
+LATINO_API void latC_advertencia(lat_mv *mv, const char *fmt, ...);
 
 /* funciones para crear un objeto latino */
 LATINO_API lat_objeto *latC_crear_logico(lat_mv *mv, bool val);

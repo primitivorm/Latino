@@ -1,18 +1,9 @@
-color = "im.azul"
-separador = '.'
-colores_disponibles = [
-    "negro",
-    "rojo",
-    "verde",
-    "amarillo",
-    "azul",
-    "purpura",
-    "cyan",
-    "blanco",
-    "rosa",
-    "naranja"
-]
+funcion fibo_rec(n)
+    // poner(n)
+	si ( n < 2 )
+		retorno n
+	fin
+	retorno fibo_rec(n-1) + fibo_rec(n-2)
+fin
 
-colmat = cadena.match(color, "([[:alnum:]]+)"..separador.."([[:alnum:]]+)")
-poner(colmat)
-poner(colmat[0][2])
+poner(fibo_rec(7)) // debe de ser 13

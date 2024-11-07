@@ -24,8 +24,10 @@ THE SOFTWARE.
 
 #define LATINO_CORE
 
-#include "latdo.h"
+#include <stdio.h>
+
 #include "latast.h"
+#include "latdo.h"
 #include "latino.h"
 #include "latmem.h"
 #include "latmv.h"
@@ -44,6 +46,7 @@ struct lat_longjmp {
     volatile int status;
 };
 
+int ultima_pos(char *base, char *str);
 void str_concatenar(lat_mv *mv);
 
 static ast *transformar_casos(ast *casos, ast *cond_izq) {
@@ -154,6 +157,7 @@ static int encontrar_load_vararg(ast *nodo) {
     return i;
 }
 
+char *subcadena(const char *str, int beg, int n);
 static int ast_analizar(lat_mv *mv, ast *nodo, lat_bytecode *codigo, int i) {
     int temp[4] = {0};
     lat_bytecode *funcion_codigo = NULL;
@@ -467,7 +471,6 @@ static int ast_analizar(lat_mv *mv, ast *nodo, lat_bytecode *codigo, int i) {
             fi = 0;
             // procesar lista de params
             bool es_vararg = false;
-            // fdbc(PUSH_CTX, 0, 0, NULL, 0, 0, mv->nombre_archivo);
             if (fun->params) {
                 fpn(mv, fun->params);
                 es_vararg = encontrar_vararg(fun->params);
@@ -489,12 +492,22 @@ static int ast_analizar(lat_mv *mv, ast *nodo, lat_bytecode *codigo, int i) {
             f->nparams =
                 contar_num_parargs(fun->params, NODO_FUNCION_PARAMETROS);
             f->nombre = strdup(fun->nombre->valor->val.cadena);
-            dbc(STORE_NAME, 0, 0, o, nodo->nlin, nodo->ncol,
-                mv->nombre_archivo);
             if (!strcmp(f->nombre, "anonima")) {
-                lat_objeto *anon = latO_clonar(mv, o);
+                const char *random_path = tmpnam(NULL);
+                int pos = ultima_pos(random_path, PATH_SEP);
+                const char *tmp_name = subcadena(random_path, pos + 1,
+                                                 strlen(random_path) - pos - 1);
+                f->nombre = tmp_name;
+                printf("tmp_name: %s\n", tmp_name);
+                // free(random_path);
+                lat_objeto *anon = latC_crear_cadena(mv, tmp_name);
                 anon->marca = 0;
+                dbc(STORE_NAME, 0, 0, anon, nodo->nlin, nodo->ncol,
+                    mv->nombre_archivo);
                 dbc(LOAD_NAME, 0, 0, anon, nodo->nlin, nodo->ncol,
+                    mv->nombre_archivo);
+            } else {
+                dbc(STORE_NAME, 0, 0, o, nodo->nlin, nodo->ncol,
                     mv->nombre_archivo);
             }
             if (!strcmp(getstr(getCadena(o)), "menu")) {
@@ -753,13 +766,40 @@ LATINO_API void latC_error(lat_mv *mv, const char *fmt, ...) {
     latD_lanzar(mv, LAT_ERRRUN);
 }
 
+LATINO_API void latC_advertencia(lat_mv *mv, const char *fmt, ...) {
+    char buffer[MAX_INPUT_SIZE];
+    va_list args;
+    va_start(args, fmt);
+    vsprintf(buffer, fmt, args);
+    va_end(args);
+    char *info = malloc(MAX_INPUT_SIZE);
+    if (strstr(buffer, "%") != NULL) {
+        snprintf(info, MAX_INPUT_SIZE, LAT_WARNING_FMT, mv->nombre_archivo,
+                 mv->nlin, mv->ncol, "");
+        latC_apilar(mv, latC_crear_cadena(mv, info));
+        latC_apilar(mv, latC_crear_cadena(mv, buffer));
+        str_concatenar(mv);
+        lat_objeto *err = latC_desapilar(mv);
+        fprintf(stderr, "%s\n", latC_astring(mv, err));
+    } else {
+        snprintf(info, MAX_INPUT_SIZE, LAT_WARNING_FMT, mv->nombre_archivo,
+                 mv->nlin, mv->ncol, buffer);
+        fprintf(stderr, "%s\n", info);
+    }
+}
+
 LATINO_API int latC_llamar_funcion(lat_mv *mv, lat_objeto *func) {
+    lat_objeto *prevfun = mv->prevfun;
+    mv->prevfun = mv->actfun;
+    mv->actfun = func;
     struct lat_longjmp lj;
     lj.status = 0;
     lj.previo = mv->error;
     mv->error = &lj;
     LAT_TRY(mv, &lj, latMV_funcion_correr(mv, func););
     mv->error = lj.previo;
+    mv->actfun = mv->prevfun;
+    mv->prevfun = prevfun;
     return lj.status;
 }
 
@@ -783,6 +823,11 @@ LATINO_API lat_objeto *latC_analizar(lat_mv *mv, ast *nodo) {
     latM_liberar(mv, codigo);
     lat_objeto *fun = latC_crear_funcion(mv, nuevo_codigo, i);
     fun->marca = 0;
-    fun->nombre = "dummy";
+    const char *random_path = tmpnam(NULL);
+    int pos = ultima_pos(random_path, PATH_SEP);
+    const char *tmp_name =
+        subcadena(random_path, pos + 1, strlen(random_path) - pos - 1);
+    // printf("latC_analizar.tmp_name: %s\n", tmp_name);
+    fun->nombre = tmp_name;
     return fun;
 }

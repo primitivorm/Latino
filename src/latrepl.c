@@ -86,7 +86,8 @@ void latR_REPL(lat_mv *mv) {
         if (status == 0 && nodo != NULL) {
             lat_objeto *curexpr = latC_analizar(mv, nodo);
             status = latC_llamar_funcion(mv, curexpr);
-            latO_destruir(mv, curexpr);
+            // FIXME: Memory leak
+            // latO_destruir(mv, curexpr);
         }
         latA_destruir(nodo);
         // se guarda el comando al historial aunque haya error

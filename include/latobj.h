@@ -142,6 +142,7 @@ typedef struct lat_funcion {
     int ninst;
     char *nombre;
     lat_bytecode *codigo;
+    lat_objeto *local_vars;
 } lat_funcion;
 
 #ifdef WIN32
